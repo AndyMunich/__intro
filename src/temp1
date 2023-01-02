@@ -1,0 +1,696 @@
+// Nuance GBA-Intro 2022
+// ...in progress
+// Version: see name of directory/zip-file
+
+unsigned char __afm_work[0x400+0x100] __attribute__ ((section (".iwram")));
+
+#include "gba.h"
+#include "gbfs.h"
+#include "afm.h"
+
+#include "inc/sprites.h"
+#include "inc/sinuses.h"
+#include "inc/scrolltext.h"
+ 
+#include "inc/bm_logo01.h"			// Title-Screen 01 (Goldenes Block Monks Logo, Fullscreen 30x20)
+#include "inc/comparade_back01.h"	// Background (Comparade-Logo oben, und zwei Abtrennlinien)
+#include "inc/transBlack.h"			// Nur 2 Tiles: 1 8x8 transparent und 1 8x8 schwarz
+
+u16* 				CharBB		= (u16*)CharBaseBlock(0);
+u16* 				Char1BB		= (u16*)CharBaseBlock(1);
+u16* 				ScreenBB	= (u16*)ScreenBaseBlock(16);
+u16* 				Screen1BB	= (u16*)ScreenBaseBlock(17);
+unsigned short*   	SpriteMem	= (unsigned short*)0x6010000;
+
+char             	currentChar;				// Ein Byte, in dem das aktuelle Zeichen des Scrollers steht.
+u16					i, j, k, l, m, n, o, p;			// Allgemeine Variablen
+u16					scrollTextPtr;				// Aktuelle Position im Scrolltext. 16 Bit, weil der Text lang sein kann.
+u8					scrollSinePtr;				// Aktuelle Position in der Sinustabelle. Die hat 256 Eintraege, also reicht ein Byte.
+u8					scrollPos[16];				// 16 Zeichen des Scrollers koennen gleichzeitig auf dem Screen sein, hier steht von jedem die X-Position drin.
+u8					barDir1, barDir2;			// zeigt an, ob die Bars kleiner oder größer werden sollen. Wert 1 oder 0.
+u16					currentDelay = 0;
+u8					layer1Scroll, layer1Delay, kugel1Delay;
+fp 					IntrTable[]  = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+
+void createChar(u8);
+void drawCharacter(u8);
+
+u8 waitFrames(u32 frameDelay) {
+	if (currentDelay < frameDelay) {
+		currentDelay++;
+		return 0;
+	} else {
+		currentDelay = 0;
+		return 1;
+	}
+}
+
+// Diese Funktion holt sich das naechste Zeichen des Scrolltexts, und schaut, ob das ein Stern ist. Der markiert das Ende.
+// Erwartet wird der Wert currentSprite, den schleife ich aber nur weiter an die naechste Funktion.
+void createChar(u8 currentSprite) {
+	scrollTextPtr++;							// Scrolltextpointer erhoehen.
+	currentChar = scrolltext[scrollTextPtr];	// Und dieses Zeichen in currentChar kopieren.
+
+	if (currentChar == '*') {					// Checken, ob es ein Stern ist.
+		currentChar = ' ';						// Falls ja, stattdessen ein Leerzeichen anzeigen und den Scrolltextpointer auf den Anfang des Scrolltexts setzen.
+		scrollTextPtr = 0;
+	}
+	drawCharacter(currentSprite);				// Das aktuelle Zeichen anzeigen.
+}
+
+// Diese Funktion nimmt das Zeichen in currentChar, und setzt die entsprechenden Spritedaten in das Sprite, das jetzt ausserhalb des rechten Bildschirmrands steht.
+// Dieses Sprite steht in currentSprite, was ich der Funktion mitgebe.
+void drawCharacter(u8 currentSprite) {
+	u16 charData;
+	charData = 0;
+	
+	// Wenig elegant. Entsprechend dem aktuellen Zeichen schreibe ich in charData, welches Sprite das sein soll. Jedes Zeichen ist 16x16 Pixel gross, besteht also aus
+	// 4 8x8 Tiles. Leerzeichen beginnt bei Tile 0, "a" bei Tile 1, usw. Wenn es das Zeichen nicht im Font gibt, setze ich als Wert 0 (Leerzeichen).
+	switch(currentChar) {
+		case 'a' : charData = 4;
+	           	 break;
+		case 'b' : charData = 8;
+	           	 break;
+		case 'c' : charData = 12;
+	           	 break;
+		case 'd' : charData = 16;
+	           	 break;
+		case 'e' : charData = 20;
+	           	 break;
+		case 'f' : charData = 24;
+	           	 break;
+		case 'g' : charData = 28;
+	           	 break;
+		case 'h' : charData = 32;
+	           	 break;
+		case 'i' : charData = 36;
+	           	 break;
+		case 'j' : charData = 40;
+	           	 break;
+		case 'k' : charData = 44;
+	           	 break;
+		case 'l' : charData = 48;
+	           	 break;
+		case 'm' : charData = 52;
+	           	 break;
+		case 'n' : charData = 56;
+	           	 break;
+		case 'o' : charData = 60;
+	           	 break;
+		case 'p' : charData = 64;
+	           	 break;
+		case 'q' : charData = 68;
+	           	 break;
+		case 'r' : charData = 72;
+	           	 break;
+		case 's' : charData = 76;
+	           	 break;
+		case 't' : charData = 80;
+	           	 break;
+		case 'u' : charData = 84;
+	           	 break;
+		case 'v' : charData = 88;
+	           	 break;
+		case 'w' : charData = 92;
+	           	 break;
+		case 'x' : charData = 96;
+	           	 break;
+		case 'y' : charData = 100;
+	           	 break;
+		case 'z' : charData = 104;
+	           	 break;
+		case '0' : charData = 108;
+	           	 break;
+		case '1' : charData = 112;
+	           	 break;
+		case '2' : charData = 116;
+	           	 break;
+		case '3' : charData = 120;
+	           	 break;
+		case '4' : charData = 124;
+	           	 break;
+		case '5' : charData = 128;
+	           	 break;
+		case '6' : charData = 132;
+	           	 break;
+		case '7' : charData = 136;
+	           	 break;
+		case '8' : charData = 140;
+	           	 break;
+		case '9' : charData = 144;
+	           	 break;
+		case '.' : charData = 148;
+	           	 break;
+		case '-' : charData = 152;
+	           	 break;
+		case '!' : charData = 156;
+	           	 break;
+		case '#' : charData = 160;
+	           	 break;
+		case '/' : charData = 164;
+	           	 break;
+		case '?' : charData = 168;
+	           	 break;
+		case ',' : charData = 172;
+	           	 break;
+		case ':' : charData = 176;
+	           	 break;
+	}
+	sprites[(currentSprite)].attribute2 = charData; 	// Das ermittelte Sprite anzeigen. 
+}
+
+//***************************************************************************************************************************
+//***************************************************    MAIN     ***********************************************************
+//***************************************************************************************************************************
+
+int main()
+{
+
+	const GBFS_FILE *dat = find_first_gbfs_file(find_first_gbfs_file);
+
+	afm_sound_param(0xff, 2);
+	afm_install();
+	afm_init(gbfs_get_obj(dat, "music.mod", 0));
+
+	intro01();
+
+}
+
+intro01()
+{
+
+	
+	SetMode(MODE_0 | BG0_ENABLE | BG1_ENABLE | OBJ_ENABLE | OBJ_MAP_1D);								// Sprites sind immer vor den u. a. Layern sichtbar
+
+	REG_BG0CNT = (BG_COLOR_256 | TEXTBG_SIZE_256x256 | (0 << CHAR_SHIFT) | (16 << SCREEN_SHIFT)) | 1;	// hinterer Layer, ScreenBB,  CharBB,  BGPaletteMem
+	REG_BG1CNT = (BG_COLOR_16  | TEXTBG_SIZE_256x256 | (1 << CHAR_SHIFT) | (17 << SCREEN_SHIFT)) | 0;	// vorderer Layer, Screen1BB, Char1BB, BGPaletteMem
+
+	REG_BG0HOFS = 0;
+	REG_BG0VOFS = 0;
+	REG_BG1HOFS = 0;
+	REG_BG1VOFS = 0;
+	
+	layer1Scroll = 0;
+	layer1Delay = 10;
+	kugel1Delay = 10;
+
+	REG_DMA3SAD = (u32)bm_logo01_gfx;
+	REG_DMA3DAD = (u32)CharBB;
+	REG_DMA3CNT = 4736 | DMA_16NOW;
+
+	REG_DMA3SAD = (u32)bm_logo01_pal;
+	REG_DMA3DAD = (u32)BGPaletteMem;
+	REG_DMA3CNT = 40 | DMA_16NOW;
+
+	/*REG_DMA3SAD = (u32)transBlack_gfx;
+	REG_DMA3DAD = (u32)Char1BB;
+	REG_DMA3CNT = 32 | DMA_16NOW;*/
+
+	while (waitFrames(300) == 0) {
+		WaitForVsync();
+
+		afm_sync();	
+		//afm_update();
+
+	}
+	
+	for (i = 0; i < 20; i++) {
+		for (j = 0; j < 30; j++) {
+			ScreenBB[(i * 32) + j] = bm_logo01_map[(i * 30) + j];
+		}
+	}
+
+	/*for (i = 0; i < 20; i++) {
+		for (j = 23; j < 40; j++) {
+			Screen1BB[(i * 32) + j] = 1;
+		}
+	}*/
+
+	while (waitFrames(250) == 0) {
+		WaitForVsync();
+	
+	afm_sync();	
+	afm_update(); 	
+
+	if (layer1Delay < 10) {
+		layer1Delay++;
+	} else {
+		layer1Delay = 0;
+		if (layer1Scroll < 145) {
+			layer1Scroll++;
+					REG_BG1HOFS = 145 - layer1Scroll;	
+		} else {
+			layer1Scroll = 145;
+			}
+		}
+	}
+
+	while (waitFrames(525) == 0) {
+		WaitForVsync();
+
+		afm_sync();	
+		afm_update(); 
+
+		/*if (layer1Scroll < 146 && layer1Scroll > 10) {
+			layer1Scroll-= 1;
+					REG_BG1HOFS = 145 - layer1Scroll;	
+		} else {
+			layer1Scroll = 147;
+			}*/
+		}
+
+	/*for (i = 0; i < 20; i++) {
+		for (j = 23; j < 40; j++) {
+			Screen1BB[(i * 32) + j] = 1;
+		}
+	}
+
+	for (i = 0; i < 20; i++) {
+		for (j = 23; j < 40; j++) {
+			Screen1BB[(i * 32) + j] = 0;
+		}
+	}*/
+
+	for (i = 0; i < 356; i++) {	// Palette auf schwarz setzen, vor MODE-Wechsel, damit 1 Frame nix Doofes angezeigt wird.
+		BGPaletteMem[i] = 0;
+	}
+	
+	mainPart01();
+}
+
+mainPart01() {
+
+	l = 190;
+	
+	for (i = 0; i < 20; i++) {				// einmal alles auf schwarz
+		for (j = 0; j < 30; j++) {
+			Screen1BB[(i * 32) + j] = 0;
+		}
+	}
+	scrollSinePtr = 0;
+
+	// Jetzt baue ich mir 16 Sprites fuer den Scroller. FAST wie gehabt, aber: ROTATION_FLAG und SIZE_DOUBLE kommen hinzu.
+	// Die ersten 32 Sprites (0 - 31) koennen hardwareseitig rotiert und skaliert werden, dazu muss ich ROTATION_FLAG angeben, wenn ich das will.
+	// SIZE_DOUBLE macht, dass das entsprechende Sprite doppelt so gross ist, weil: Es ist immer noch ein Quadrat. Wenn ich das jetzt um 45 Grad drehen 
+	// wuerde, wuerden links, rechts, oben und unten die Ecken abgeschnitten werden, weil die dann ja "ueberstehen". 
+	// Es gibt jetzt auch noch ROTDATA(<spritenummer>). Da steht drin, welcher Rotationswert fuer dieses Sprite gilt. Normalerweise ist das einfach die
+	// Nummer des Sprites (so auch hier), aber wenn ich will, dass die sich alle gleich drehen, schreibe ich da zB ueberall 0 rein. Braeuchte man zB fuer
+	// sowas wie Afterburner, wo sich der ganze Hintergrund (und somit alle Baeume auf dem Screen) gleich drehen. Wir brauchen das aber fuer jedes Sprite
+	// individuell, daher jeweils die Spritenummer.
+	
+	// Srpites (2 - 17) für Scroller
+	for (i = 2; i < 18; i++) {
+		sprites[i].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | 160;
+		sprites[i].attribute1 = SIZE_16 | ROTDATA(i) | 240;
+		sprites[i].attribute2 = 0;
+	}
+
+	// Sprite Nr. 0 (oberer Teil von Kugel-Hand)
+	sprites[0].attribute0 = COLOR_16 | SQUARE | 160;
+	sprites[0].attribute1 = SIZE_64 | 240;
+	sprites[0].attribute2 = 180 | 4096;			// die Stellen, auf die ein Sprite zugreift werden in 8x8 Tiles aufgeteilt. Beim Font hat z.B. jeder Buchstabe 16x16 Pixel,
+	// also vier 8x8-Tiles. Deswegen wird pro Buchstabe in 4er-Schritten hochgerechnet. Bei einem 64x64 Sprite müssten es dann 64 8x8-Tiles sein. Also nach 180 käme dann 244.
+
+	// Sprite Nr. 1 (unterer Teil von Kugel-Hand)
+	sprites[1].attribute0 = COLOR_16 | SQUARE | 160;
+	sprites[1].attribute1 = SIZE_64 | 240;
+	sprites[1].attribute2 = 244 | (4096 * 2);	// erster Wert = Stelle des Sprite, zweiter Wert = Stelle an der Palette
+
+	// Sprites Nr. 18 bis 22 (Bars)
+	sprites[18].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | SIZE_DOUBLE | 160;
+	sprites[18].attribute1 = SIZE_16 | ROTDATA(18) | 240;
+	sprites[18].attribute2 = 308 | (4096 * 3);
+	sprites[19].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | SIZE_DOUBLE | 160;
+	sprites[19].attribute1 = SIZE_16 | ROTDATA(19) | 240;
+	sprites[19].attribute2 = 312 | (4096 * 4);
+	sprites[20].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | SIZE_DOUBLE | 160;
+	sprites[20].attribute1 = SIZE_16 | ROTDATA(20) | 240;
+	sprites[20].attribute2 = 316 | (4096 * 5);
+	sprites[21].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | SIZE_DOUBLE | 160;
+	sprites[21].attribute1 = SIZE_16 | ROTDATA(21) | 240;
+	sprites[21].attribute2 = 320 | (4096 * 6);
+	sprites[22].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | SIZE_DOUBLE | 160;
+	sprites[22].attribute1 = SIZE_16 | ROTDATA(22) | 240;
+	sprites[22].attribute2 = 324 | (4096 * 7);
+	sprites[23].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | SIZE_DOUBLE | 160;		// nochmal bar_yellow
+	sprites[23].attribute1 = SIZE_16 | ROTDATA(22) | 240;
+	sprites[23].attribute2 = 324 | (4096 * 7);
+	sprites[24].attribute0 = COLOR_16 | SQUARE | ROTATION_FLAG | SIZE_DOUBLE | 160;		// nochmal bar_blue
+	sprites[24].attribute1 = SIZE_16 | ROTDATA(18) | 240;
+	sprites[24].attribute2 = 308 | (4096 * 3);
+
+	// Alle Sprites des Scrollers fein hintereinander platzieren. Sind wie gesagt 16 Pixel breit.
+	for (i = 2; i < 18; i++) {
+		scrollPos[i] = (i * 16);
+	}
+	
+	// Den Zeichensatz kopieren.
+	REG_DMA3SAD = (u32)fontData;
+	REG_DMA3DAD = (u32)SpriteMem;
+	REG_DMA3CNT = 2880 | DMA_16NOW;
+
+	// Den oberen Teil der Kugel-Hand kopieren
+	REG_DMA3SAD = (u32)kugel_oben16;
+	REG_DMA3DAD = (u32)SpriteMem + (2880 * 2);	// nächstes Sprite dann mit REG_DMA3DAD = (u32)SpriteMem + ((2880 + 1024) * 2); reinladen
+	REG_DMA3CNT = 1024 | DMA_16NOW | 4096;		// bei den nächsten 16 Farben dann wieder +4096, also: 8192
+
+	// Den unteren Teil der Kugel-Hand kopieren
+	REG_DMA3SAD = (u32)kugel_unten16;
+	REG_DMA3DAD = (u32)SpriteMem + ((2880 + 1024) * 2);
+	REG_DMA3CNT = 1024 | DMA_16NOW | (4096 * 2);
+
+	// Alle 5 Bars kopieren (blue, green, purple, red, yellow)
+	REG_DMA3SAD = (u32)bar_blue;
+	REG_DMA3DAD = (u32)SpriteMem + ((2880 + 1024 * 2) * 2);
+	REG_DMA3CNT = 64 | DMA_16NOW | (4096 * 2) + (64 * 1);
+	REG_DMA3SAD = (u32)bar_green;
+	REG_DMA3DAD = (u32)SpriteMem + ((2880 + 1024 * 2 + (64 * 1)) * 2);
+	REG_DMA3CNT = 64 | DMA_16NOW | (4096 * 2) + (64 * 2);
+	REG_DMA3SAD = (u32)bar_purple;
+	REG_DMA3DAD = (u32)SpriteMem + ((2880 + 1024 * 2 + (64 * 2)) * 2);
+	REG_DMA3CNT = 64 | DMA_16NOW | (4096 * 2) + (64 * 3);
+	REG_DMA3SAD = (u32)bar_red;
+	REG_DMA3DAD = (u32)SpriteMem + ((2880 + 1024 * 2 + (64 * 3)) * 2);
+	REG_DMA3CNT = 64 | DMA_16NOW | (4096 * 2) + (64 * 4);
+	REG_DMA3SAD = (u32)bar_yellow;
+	REG_DMA3DAD = (u32)SpriteMem + ((2880 + 1024 * 2 + (64 * 4)) * 2);
+	REG_DMA3CNT = 64 | DMA_16NOW | (4096 * 2) + (64 * 5);
+
+	// Und die 128 (8 x 16) Spritefarben setzen.
+	for (i = 0; i < 128; i++) {
+		OBJPaletteMem[i] = spritePalette[i];
+	}
+
+	/*for (i = 0; i < 256; i++) {	// copy palette to memory
+		BGPaletteMem[i] = comparade_back01_pal[i];	
+	}*/
+
+	// Und den Hintergrund.
+	REG_DMA3SAD = (u32)comparade_back01_gfx;
+	REG_DMA3DAD = (u32)CharBB;
+	REG_DMA3CNT = 1984 | DMA_16NOW;	
+
+	// Palette des Hintergrunds setzen. 29 Farben.
+	REG_DMA3SAD = (u32)comparade_back01_pal;
+	REG_DMA3DAD = (u32)BGPaletteMem;
+	REG_DMA3CNT = 50 | DMA_16NOW;
+
+	// Von dem zeigen wir auch gleich die Map ab. ist 30x20, deshalb die doppelte Schleife.
+	for (i = 0; i < 20; i++) {
+		for (j = 0; j < 30; j++) {
+			ScreenBB[(i * 32) + j] = comparade_back01_map[(i * 30) + j];
+		}
+	}
+
+	m = 256; n = 120; p = 1; barDir1 = 0; barDir2 = 1;
+
+	while(1)
+	{
+		WaitForVsync();			// Auf den Rasterstrahl warten.
+
+		afm_sync();	
+		afm_update(); 
+
+		// ************************************** SCROLLER *********************************************
+		// Das folgende machen wir fuer alle 16 Sprites im Scroller.
+		for (i = 2; i < 18; i++) {
+			// Wenn die X-Position groesser als 0 ist, ziehen wir 1 ab. Soll ja nach links scrollen.
+			// Wenn die Position aber 0 ist, setzen wir das Sprite rechts ausserhalb des sichtbaren Bereichs, und gucken, welches Zeichen das jetzt werden muss.
+			if (scrollPos[i] > 0) {
+				scrollPos[i]--;			// 1 Pixel nach links.
+			} else {
+				scrollPos[i] = 255;		// Ganz nach rechts.
+				createChar(i);			// Und naechstes Zeichen holen.
+			}
+						
+			// Obacht: die sind jetzt 32x32 Pixel gross, also ziehe ich was ab, dass die links auch komplett rausscrollen.
+			// RotateSprite setzt die Rotation und den Zoom, als erstes kommt die Spritenummer, dann der Drehwinkel in Grad, und dann die Skalierung nach X und Y.
+			// Ignoriere das Skalieren erstmal (das ist komplizierter). 255 ist in dem Fall einfach die Originalgroesse.
+
+			MoveSprite(i, (scrollPos[i] - 24), 134 + scrollerYSine[scrollPos[i]]);
+			//RotateSprite(i, scrollerRotSine[scrollPos[i]], 255, 255);
+			RotateSprite(i, 0, 340, 340);
+
+			// ************************************** KUGEL-HAND *********************************************
+			// Obere Kugel-Hand reinschweben und anzeigen, mit kugel1Delay. Startwert l = 190
+			if ( l > 96)
+			{
+				if (kugel1Delay < 80)
+				{
+					kugel1Delay++;
+				}
+				else
+				{
+					kugel1Delay = 0;
+					l = l - 1;
+					MoveSprite(0, 165, l-16);
+				}
+			}
+			else
+			{
+				MoveSprite(0, 165, 96-16);
+			}
+
+			// Untere Kugel-Hand reinschweben und anzeigen, mit kugel1Delay
+			if ( l > 96)
+			{
+				if (kugel1Delay < 80)
+				{
+					kugel1Delay++;
+				}
+				else
+				{
+					kugel1Delay = 0;
+					l = l - 1;
+					MoveSprite(1, 165, l+47);
+				}
+			}
+			else
+			{
+				MoveSprite(1, 165, 96+48);
+			}
+
+		}
+
+
+		// ************************************** BARS *********************************************
+		// Start-Werte: m = 256; n = 120; barDir1 = 0; barDir2 = 1; o = 0; p = 1;
+		if ( l >= 96)
+		{
+
+// ANFANG VON   NORMAL RAUF UND RUNTER
+		if (p < 770)
+		{
+			if (barDir1 == 0)
+			{
+				RotateSprite(18, 0, 0, m);
+				RotateSprite(20, 0, 0, m+40);
+				RotateSprite(22, 0, 0, m-20);
+				m = m - 6;
+				if (m <= 60)
+				{
+					barDir1 = 1;
+				}
+			}
+			if (barDir1 == 1)
+			{
+				RotateSprite(18, 0, 0, m);
+				RotateSprite(20, 0, 0, m+40);
+				RotateSprite(22, 0, 0, m-20);
+				m = m + 8;
+				if (m >= 384)
+				{
+					barDir1 = 0;
+				}
+			}
+
+			if (barDir2 == 1)
+			{
+				RotateSprite(19, 0, 0, n-30);
+				RotateSprite(21, 0, 0, n+20);
+				RotateSprite(23, 0, 0, n-15);
+				n = n - 7;
+				if (n <= 60)
+				{
+					barDir2 = 0;
+				}
+			}
+			if (barDir2 == 0)
+			{
+				RotateSprite(19, 0, 0, n-30);
+				RotateSprite(21, 0, 0, n+20);
+				RotateSprite(23, 0, 0, n-15);
+				n = n + 10;
+				if (n >= 384)
+				{
+					barDir2 = 1;
+				}
+			}
+
+			MoveSprite(23, 7, 40 + barYSine[scrollPos[4]]);		// nochmal bar_yellow
+			MoveSprite(18, 39, 40 + barYSine[scrollPos[11]]);
+			MoveSprite(19, 32+39, 40 + barYSine[scrollPos[6]]);
+			MoveSprite(20, 64+39, 40 + barYSine[scrollPos[9]]);
+			MoveSprite(21, 96+39, 40 + barYSine[scrollPos[3]]);
+			MoveSprite(22, 128+39, 40 + barYSine[scrollPos[7]]);
+			MoveSprite(24, 160+39, 40 + barYSine[scrollPos[2]]);		// nochmal bar_blue
+
+		p = p + 1;
+		}
+// ENDE VON   NORMAL RAUF UND RUNTER */
+
+// ANFANG VON   ROTATING-EFFEKT */
+		if (p >= 770 && p < 1540)
+		{
+			if (barDir1 == 0)
+			{
+				RotateSprite(18, o, n, 140);
+				RotateSprite(20, o, n, 140);
+				RotateSprite(22, o, n, 140);
+				m = m - 6;
+				if (m <= 60)
+				{
+					barDir1 = 1;
+				}
+			}
+			if (barDir1 == 1)
+			{
+				RotateSprite(18, o, n, 140);
+				RotateSprite(20, o, n, 140);
+				RotateSprite(22, o, n, 140);
+				m = m + 8;
+				if (m >= 384)
+				{
+					barDir1 = 0;
+				}
+			}
+
+			if (barDir2 == 1)
+			{
+				RotateSprite(19, o, n, 140);
+				RotateSprite(21, o, n, 140);
+				RotateSprite(23, o, n, 140);
+				n = n - 7;
+				o = o + 4;
+				if (n <= 60)
+				{
+					barDir2 = 0;
+					o = 0;
+				}
+			}
+			if (barDir2 == 0)
+			{
+				RotateSprite(19, o, n, 140);
+				RotateSprite(21, o, n, 140);
+				RotateSprite(23, o, n, 140);
+				n = n + 10;
+				o = o + 4;
+				if (n >= 384)
+				{
+					barDir2 = 1;
+				}
+			}
+
+			MoveSprite(23, 7, 40 + barYSine[scrollPos[4]]);		// nochmal bar_yellow
+			MoveSprite(18, 39, 40 + barYSine[scrollPos[11]]);
+			MoveSprite(19, 32+39, 40 + barYSine[scrollPos[6]]);
+			MoveSprite(20, 64+39, 40 + barYSine[scrollPos[9]]);
+			MoveSprite(21, 96+39, 40 + barYSine[scrollPos[3]]);
+			MoveSprite(22, 128+39, 40 + barYSine[scrollPos[7]]);
+			MoveSprite(24, 160+39, 40 + barYSine[scrollPos[2]]);		// nochmal bar_blue
+
+		p = p + 1;
+
+		}
+// ENDE VON   ROTATING-EFFEKT */
+
+// ANFANG VON   RAUF UND RUNTER + LINKS/RECHTS ZOOM
+
+		if (p >= 1540)
+		{
+			if (barDir1 == 0)
+			{
+				RotateSprite(18, 0, 0+(1*n), m);
+				RotateSprite(20, 0, 0+(1*n), m+40);
+				RotateSprite(22, 0, 0+(2*m), m-20);
+				m = m - 6;
+				if (m <= 60)
+				{
+					barDir1 = 1;
+				}
+			}
+			if (barDir1 == 1)
+			{
+				o = o - 10;
+				RotateSprite(18, 0, 0+(1*n), m);
+				RotateSprite(20, 0, 0+(1*n), m+40);
+				RotateSprite(22, 0, 0+(2*m), m-20);
+				m = m + 8;
+				if (m >= 384)
+				{
+					barDir1 = 0;
+				}
+			}
+
+			if (barDir2 == 1)
+			{
+				RotateSprite(19, 0, 0+(2*n), n-30);
+				RotateSprite(21, 0, 0+(2*n), n+20);
+				RotateSprite(23, 0, 0+(2*n), n-15);
+				n = n - 7;
+				if (n <= 60)
+				{
+					barDir2 = 0;
+				}
+			}
+			if (barDir2 == 0)
+			{
+				RotateSprite(19, 0, 0+(2*n), n-30);
+				RotateSprite(21, 0, 0+(2*n), n+20);
+				RotateSprite(23, 0, 0+(2*n), n-15);
+				n = n + 10;
+				if (n >= 384)
+				{
+					barDir2 = 1;
+				}
+			}
+
+			MoveSprite(23, 7, 40 + barYSine[scrollPos[4]]);		// nochmal bar_yellow
+			MoveSprite(18, 39, 40 + barYSine[scrollPos[11]]);
+			MoveSprite(19, 32+39, 40 + barYSine[scrollPos[6]]);
+			MoveSprite(20, 64+39, 40 + barYSine[scrollPos[9]]);
+			MoveSprite(21, 96+39, 40 + barYSine[scrollPos[3]]);
+			MoveSprite(22, 128+39, 40 + barYSine[scrollPos[7]]);
+			MoveSprite(24, 160+39, 40 + barYSine[scrollPos[2]]);		// nochmal bar_blue
+
+			p = p + 1;
+
+			if (p > 2305)
+			{
+				p = 1;
+			}
+		}
+
+
+// ENDE VON   RAUF UND RUNTER + LINKS/RECHTS ZOOM
+
+		}
+
+
+
+		// ************************************** SCROLLER DYNAMICS *********************************************
+		// Das waers eigentlich schon, aber als Bonus noch dies:
+		// Scrollen der Sinustabelle nach rechts, das macht den Sinusscroller viel dynamischer!
+		// Natuerlich scrollen wir auch die Rotationstabelle analog dazu mit. 
+		
+		j = scrollerYSine[255]; 							// Letzten Wert der Sinustabelle buffern.
+		k = scrollerRotSine[255];							// Und auch der Rotationstabelle.
+		for (i = 255; i > 0; i--) {							// Dann von hinten nach vorne jeden Wert mit dem vorhergehenden ueberschreiben.
+			scrollerYSine[i] = scrollerYSine[i - 1];
+			scrollerRotSine[i] = scrollerRotSine[i - 1];
+		}
+		scrollerYSine[0] = j;								// Zuletzt den ersten Wert mit dem gebufferten ueberschreiben.
+		scrollerRotSine[0] = k;
+		CopyOAM();											// Alles erledigt, Spritepositionen und -rotation setzen.
+	}
+}

@@ -1,0 +1,209 @@
+#include <genesis.h>
+#include <resources.h>
+#include <sinuses.h>
+#include <scrolltext.h>
+
+u16 ind = TILE_USERINDEX;
+float hscroll_offset = 0;
+int hscroll_offset_fore = 0;
+int attack_timer = 0;
+int attack_duration = 56;   // Attack-Anim hat 7 Frames, jeder Frame wird 8 Frames lang angezeigt = 56
+int attack_timer2 = 0;
+int attack_duration2 = 56;
+
+Sprite* text01;
+Sprite* text02;
+Sprite* text03;
+Sprite* text04;
+int player_x = 98;
+int player_y = 36;
+Sprite* player2;
+int player2_x = 170;
+int player2_y = 20;
+
+#define TEXT_A 0
+#define TEXT_B 1
+#define TEXT_C 2
+#define TEXT_D 3
+#define TEXT_E 4
+#define TEXT_STRICH 30
+
+u16			scrollTextPtr;  // Aktuelle Position im Scrolltext. 16 Bit, weil der Text lang sein kann.
+u8			scrollSinePtr;  // Aktuelle Position in der Sinustabelle. Die hat 256 Eintraege, also reicht ein Byte.
+u8			scrollPos[20];  // 20 Zeichen des Scrollers koennen gleichzeitig auf dem Screen sein, hier steht von jedem die X-Position drin.
+
+static void handleInput(){
+    u16 value = JOY_readJoypad(JOY_1);
+    u16 value2 = JOY_readJoypad(JOY_2);
+
+    // PLAYER 1
+
+    if (attack_timer == 0){
+        if (value & BUTTON_RIGHT){
+            player_x += 1;
+            SPR_setAnim(text04, TEXT_A);
+            SPR_setHFlip(text04, FALSE);
+        }
+        else if (value & BUTTON_LEFT){
+            player_x -= 1;
+            SPR_setAnim(text04, TEXT_B);
+            SPR_setHFlip(text04, TRUE);
+        }
+        if (value & BUTTON_DOWN){
+            player_y += 1;
+            SPR_setAnim(text04, TEXT_C);
+            SPR_setHFlip(text04, FALSE);
+        }
+        else if (value & BUTTON_UP){
+            player_y -= 1;
+            SPR_setAnim(text04, TEXT_D);
+            SPR_setHFlip(text04, FALSE);
+        }
+        if (!(value & BUTTON_UP) && !(value & BUTTON_DOWN) && !(value & BUTTON_LEFT) && !(value & BUTTON_RIGHT)){
+            SPR_setAnim(text04, TEXT_STRICH);
+            SPR_setHFlip(text04, FALSE);
+        }
+    }
+
+    // PLAYER 2
+    if (attack_timer2 == 0){
+        if (value2 & BUTTON_RIGHT){
+            player2_x += 1;
+            SPR_setAnim(player2, TEXT_C);
+            SPR_setHFlip(player2, FALSE);
+        }
+        else if (value2 & BUTTON_LEFT){
+            player2_x -= 1;
+            SPR_setAnim(player2, TEXT_C);
+            SPR_setHFlip(player2, TRUE);
+        }
+        if (value2 & BUTTON_DOWN){
+            player2_y += 1;
+            SPR_setAnim(player2, 6);
+            //SPR_setHFlip(player2, FALSE);
+        }
+        else if (value2 & BUTTON_UP){
+            player2_y -= 1;
+            SPR_setAnim(player2, 5);
+            //SPR_setHFlip(player2, FALSE);
+        }
+        if (!(value2 & BUTTON_UP) && !(value2 & BUTTON_DOWN) && !(value2 & BUTTON_LEFT) && !(value2 & BUTTON_RIGHT)){
+            SPR_setAnim(player2, 1);
+            //SPR_setHFlip(player2, FALSE);
+        }
+    }
+
+    SPR_setPosition(text04, player_x, player_y);
+    SPR_setPosition(player2, player2_x, player2_y);
+}
+
+static void joyEvent(u16 joy, u16 changed, u16 state){
+
+    u16 value = JOY_readJoypad(JOY_1);
+    u16 value2 = JOY_readJoypad(JOY_2);
+
+    if (value){
+        if ((changed & state & BUTTON_B) && attack_timer == 0){
+            SPR_setAnim(text04, TEXT_E);
+            attack_timer += 1;
+        }
+    }
+    if (value2){
+        if ((changed & state & BUTTON_B) && attack_timer2 == 0){
+            SPR_setAnim(player2, 7);
+            attack_timer2 += 1;
+        }
+    }
+}
+
+static void attack_function(){
+
+    if (attack_timer > 0 && attack_timer < attack_duration) attack_timer +=1;
+    // else if (attack_timer == attack_duration) attack_timer = 0;
+    else attack_timer = 0;
+
+    if (attack_timer2 > 0 && attack_timer2 < attack_duration2) attack_timer2 +=1;
+    // else if (attack_timer2 == attack_duration2) attack_timer2 = 0;
+    else attack_timer2 = 0;
+}
+
+int main()
+{
+    SPR_init(0, 0, 0);
+
+    PAL_setPalette(PAL0, bg1.palette->data, DMA);
+    VDP_drawImageEx(BG_B, &bg1, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind), 0, -4, FALSE, TRUE);
+    ind += bg1.tileset->numTile;
+    PAL_setPalette(PAL1, fg1.palette->data, DMA);
+    VDP_drawImageEx(BG_A, &fg1, TILE_ATTR_FULL(PAL1, TRUE, FALSE, FALSE, ind), 0, -1, FALSE, TRUE);
+    ind += fg1.tileset->numTile; 
+    VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
+
+    PAL_setPalette(PAL2, font01.palette->data, DMA);
+    PAL_setPalette(PAL3, sonic_image.palette->data, DMA);
+
+    text04 = SPR_addSprite(&font01, player_x, player_y, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
+    SPR_setAnim(text04, TEXT_STRICH);
+    player2 = SPR_addSprite(&sonic_image, player2_x, player2_y, TILE_ATTR(PAL3, TRUE, FALSE, FALSE));
+    SPR_setAnim(player2, TEXT_B);
+
+        text01 = SPR_addSprite(&font01, 50, 36, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
+        SPR_setAnim(text01, TEXT_A);
+        text02 = SPR_addSprite(&font01, 66, 36, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
+        SPR_setAnim(text02, TEXT_B);
+        text03 = SPR_addSprite(&font01, 82, 36, TILE_ATTR(PAL2, TRUE, FALSE, FALSE));
+        SPR_setAnim(text03, TEXT_C);
+
+	XGM_setLoopNumber(-1);
+	XGM_startPlay(&track1);
+
+    JOY_setEventHandler(joyEvent);
+    
+    while(1)
+    {
+        attack_function();
+        handleInput();
+        
+        VDP_setHorizontalScroll(BG_B, hscroll_offset);
+        VDP_setHorizontalScroll(BG_A, hscroll_offset_fore);
+        hscroll_offset -= 1;
+        hscroll_offset_fore -=2;
+
+        SPR_update();
+        SYS_doVBlankProcess();
+    }
+    return (0);
+}
+
+
+
+/* void myJoyHandler (u16 joy, u16 changed, u16 state)
+{
+	if (joy == JOY_1)
+	{
+		if (state & BUTTON_RIGHT)
+		{
+			player.velx = 2;
+			SPR_setAnim(player.sprite, ANIM_MOVE);
+			SPR_setHFlip(player.sprite, TRUE);
+		}
+		else if (state & BUTTON_LEFT)
+		{
+			player.velx = -2;
+			SPR_setAnim(player.sprite, ANIM_MOVE);
+			SPR_setHFlip(player.sprite, FALSE);
+		}
+		else{
+			if ((changed & BUTTON_RIGHT) | (changed & BUTTON_LEFT)){
+				player.velx = 0;
+				SPR_setAnim(player.sprite, ANIM_STRAIGHT);
+			}
+		}
+		if (state & BUTTON_B & changed)
+		{
+			shootBullet(player);
+		}
+	}
+}
+	JOY_init();
+	JOY_setEventHandler (&myJoyHandler); */
