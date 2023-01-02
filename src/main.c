@@ -1,4 +1,4 @@
-// second commit: increased speed of scrolltext and parallax-background
+// third commit: changed back speed of scrolltext and parallax-background to normal
 
 #include <genesis.h>
 #include <resources.h>
