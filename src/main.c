@@ -76,7 +76,7 @@ void setScrollSprites()
         x += SCROLL_SPRITE_WIDTH + SCROLL_SPRITE_SPACING;
         ++scrollIndex;
     }
-    scrollX = scrollX + 4;
+    scrollX = scrollX + 2;
 }
 
 
@@ -103,8 +103,8 @@ int main()
     {
         VDP_setHorizontalScroll(BG_B, hscroll_offset);
         VDP_setHorizontalScroll(BG_A, hscroll_offset_fore);
-        hscroll_offset += 2;
-        hscroll_offset_fore +=3;
+        hscroll_offset += 1;
+        hscroll_offset_fore +=2;
 
         setScrollSprites();
 
