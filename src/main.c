@@ -1,20 +1,20 @@
-// third commit: changed back speed of scrolltext and parallax-background to normal
-
 #include <genesis.h>
 #include <resources.h>
 #include <sinuses.h>
 #include <scrolltext.h>
 
 u16 ind = TILE_USERINDEX;
+int logoX = 80;
+int logoY = 0;
+int j = 0;
+int k = 130;
 
-int hscroll_offset = 0;
-int hscroll_offset_fore = 0;
+float hscroll_offset = 0;
+float hscroll_offset_fore = 0;
 
 #define SCROLL_SPRITE_WIDTH 16
 #define SCROLL_SPRITE_SPACING 4
 #define NUM_SCROLL_SPRITES ((320/(SCROLL_SPRITE_WIDTH+SCROLL_SPRITE_SPACING))+1)
-
-Sprite* sprScroll[NUM_SCROLL_SPRITES];
 
 #define FONT_ANIM_A 0
 #define FONT_ANIM_DOT 26
@@ -23,7 +23,10 @@ Sprite* sprScroll[NUM_SCROLL_SPRITES];
 #define FONT_ANIM_QUESTION 29
 #define FONT_ANIM_DASH 30
 #define FONT_ANIM_SPACE 31
-//#define FONT_ANIM_0 32
+//#define FONT_ANIM_0 32  
+
+Sprite* sprScroll[NUM_SCROLL_SPRITES];
+Sprite* logo;
 
 char getAnimFromChar( char zeichen )
 {
@@ -32,9 +35,7 @@ char getAnimFromChar( char zeichen )
         return (zeichen - 'A') + FONT_ANIM_A;
     }
 /*  if( zeichen >= '0' && zeichen <= '9')
-    {
-        return (zeichen - '0') + FONT_ANIM_0;
-    }*/
+    {return (zeichen - '0') + FONT_ANIM_0;}*/
 
     switch( zeichen )
     {
@@ -68,7 +69,7 @@ void setScrollSprites()
 
     for( int i=0; i<NUM_SCROLL_SPRITES; ++i )
     {
-        const s16 displayY = y + scrollerYSine[ ((i*(SCROLL_SPRITE_WIDTH + SCROLL_SPRITE_SPACING)-xModulo)) % sizeof( scrollerYSine ) ];
+        const s16 displayY = y + scrollerYSine[((i*(SCROLL_SPRITE_WIDTH + SCROLL_SPRITE_SPACING)-xModulo)) % sizeof( scrollerYSine ) ];
         const char zeichen = scrolltext[ scrollIndex % (sizeof( scrolltext )-1) ];
         const s16 displayX = (zeichen == ' ') ? 320 : x;
         SPR_setPosition( sprScroll[ i ], displayX, displayY );
@@ -79,20 +80,40 @@ void setScrollSprites()
     scrollX = scrollX + 2;
 }
 
+void logoMove()
+{
+    if (j < 255){
+        j = j + 1;
+    }
+    else {
+        j = 0;
+    }
+
+    logoX = barYSine[j];
+    logoY = scrollerYSine[j];
+    SPR_setPosition(logo, 50+logoX, 5+logoY);
+}
 
 int main()
 {
     SPR_init();
 
     PAL_setPalette(PAL0, back10.palette->data, DMA);
-    VDP_drawImageEx(BG_B, &back10, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind), 0, 0, FALSE, TRUE);
+    VDP_drawImageEx(BG_B, &back10, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind), 0, -0, FALSE, TRUE);
     ind += back10.tileset->numTile;
-    PAL_setPalette(PAL1, clouds01.palette->data, DMA);
-    VDP_drawImageEx(BG_A, &clouds01, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), -4, -1, FALSE, TRUE);
+    PAL_setPalette(PAL1, space01.palette->data, DMA);
+    VDP_drawImageEx(BG_B, &space01, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, 15, FALSE, TRUE);
+    ind += space01.tileset->numTile;
+    //PAL_setPalette(PAL2, clouds01.palette->data, DMA);
+    VDP_drawImageEx(BG_A, &clouds01, TILE_ATTR_FULL(PAL1, TRUE, FALSE, FALSE, ind), -4, 0, FALSE, TRUE);
     ind += clouds01.tileset->numTile;
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 
     PAL_setPalette(PAL2, font01.palette->data, DMA);
+
+    PAL_setPalette(PAL3, logo01.palette->data, DMA);
+    logo = SPR_addSprite(&logo01, 320, 240, TILE_ATTR(PAL3, FALSE, FALSE, FALSE));
+    SPR_setPosition(logo, 320,240);
 
 	XGM_setLoopNumber(-1);
 	XGM_startPlay(&track01);
@@ -103,11 +124,11 @@ int main()
     {
         VDP_setHorizontalScroll(BG_B, hscroll_offset);
         VDP_setHorizontalScroll(BG_A, hscroll_offset_fore);
-        hscroll_offset += 1;
-        hscroll_offset_fore +=2;
+        hscroll_offset -= 0.5;
+        hscroll_offset_fore -=1;
 
         setScrollSprites();
-
+        logoMove();
         SPR_update();
 
         SYS_doVBlankProcess();

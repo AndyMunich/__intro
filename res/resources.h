@@ -3,7 +3,9 @@
 
 extern const u8 track01[67584];
 extern const SpriteDefinition font01;
+extern const SpriteDefinition logo01;
 extern const Image back10;
 extern const Image clouds01;
+extern const Image space01;
 
 #endif // _RES_RESOURCES_H_
