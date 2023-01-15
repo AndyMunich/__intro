@@ -7,7 +7,8 @@ u16 ind = TILE_USERINDEX;
 int logoX = 80;
 int logoY = 0;
 int j = 0;
-int k = 130;
+int k = 0;
+int l = 0;
 
 float hscroll_offset = 0;
 float hscroll_offset_fore = 0;
@@ -79,7 +80,7 @@ void setScrollSprites()
     }
     scrollX = scrollX + 2;
 }
-
+ 
 void logoMove()
 {
     if (j < 255){
@@ -88,37 +89,66 @@ void logoMove()
     else {
         j = 0;
     }
-
-    logoX = barYSine[j];
-    logoY = scrollerYSine[j];
+    if (k < 255){
+        k = k + 1;
+    }
+    else {
+        k = 0;
+    }
+    logoX = logoXSine[j];
+    logoY = logoYSine[k];
     SPR_setPosition(logo, 50+logoX, 5+logoY);
 }
+ 
+void intro(){
 
-int main()
-{
+    VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
+
     SPR_init();
 
-    PAL_setPalette(PAL0, back10.palette->data, DMA);
-    VDP_drawImageEx(BG_B, &back10, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind), 0, -0, FALSE, TRUE);
-    ind += back10.tileset->numTile;
+    initScrollSprites();
+    
+    PAL_setPalette(PAL0, title01.palette->data, DMA);
+    PAL_setPalette(PAL1, black.palette->data, DMA);
+
+    VDP_drawImageEx(BG_A, &title01, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind), 0, 0, FALSE, TRUE);
+    //ind += title01.tileset->numTile;
+	
+    XGM_setLoopNumber(-1);
+	XGM_startPlay(&track01);
+
+    waitTick(3000);
+
+    VDP_drawImageEx(BG_A, &black, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, 0, TRUE, TRUE);
+    ind += black.tileset->numTile;
+    //VDP_drawImageEx(BG_B, &black, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, 0, TRUE, TRUE);
+
+    mainpart();
+}
+
+void mainpart(){
+
+    //PAL_setPalette(PAL1, black.palette->data, DMA);
+    //VDP_drawImageEx(BG_A, &black, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, 0, TRUE, TRUE);
+    
     PAL_setPalette(PAL1, space01.palette->data, DMA);
-    VDP_drawImageEx(BG_B, &space01, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, 15, FALSE, TRUE);
+    VDP_drawImageEx(BG_B, &space01, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, -4, FALSE, TRUE);
     ind += space01.tileset->numTile;
-    //PAL_setPalette(PAL2, clouds01.palette->data, DMA);
+
+    PAL_setPalette(PAL0, back10.palette->data, DMA);
+    VDP_drawImageEx(BG_B, &back10, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind), 0, 9, FALSE, TRUE);
+    ind += back10.tileset->numTile;
+
     VDP_drawImageEx(BG_A, &clouds01, TILE_ATTR_FULL(PAL1, TRUE, FALSE, FALSE, ind), -4, 0, FALSE, TRUE);
     ind += clouds01.tileset->numTile;
-    VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
+
+    //PAL_setPalette(PAL2, clouds01.palette->data, DMA);
 
     PAL_setPalette(PAL2, font01.palette->data, DMA);
 
     PAL_setPalette(PAL3, logo01.palette->data, DMA);
     logo = SPR_addSprite(&logo01, 320, 240, TILE_ATTR(PAL3, FALSE, FALSE, FALSE));
     SPR_setPosition(logo, 320,240);
-
-	XGM_setLoopNumber(-1);
-	XGM_startPlay(&track01);
- 
-    initScrollSprites();
 
     while(1)
     {
@@ -129,9 +159,16 @@ int main()
 
         setScrollSprites();
         logoMove();
+
         SPR_update();
 
         SYS_doVBlankProcess();
     }
+}
+
+int main()
+{
+    intro();
+
     return (0);
 }

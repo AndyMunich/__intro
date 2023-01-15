@@ -7,5 +7,7 @@ extern const SpriteDefinition logo01;
 extern const Image back10;
 extern const Image clouds01;
 extern const Image space01;
+extern const Image title01;
+extern const Image black;
 
 #endif // _RES_RESOURCES_H_
