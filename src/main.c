@@ -3,13 +3,13 @@
 #include <sinuses.h>
 #include <scrolltext.h>
 
-u16 ind = TILE_USERINDEX;
+u16 ind = TILE_USER_INDEX;
 int logoX = 80;
 int logoY = 0;
 int j = 0;
 int k = 0;
 int l = 0;
-
+ 
 float hscroll_offset = 0;
 float hscroll_offset_fore = 0;
 
@@ -28,7 +28,7 @@ float hscroll_offset_fore = 0;
 
 Sprite* sprScroll[NUM_SCROLL_SPRITES];
 Sprite* logo;
-
+ 
 char getAnimFromChar( char zeichen )
 {
     if( zeichen >= 'A' && zeichen <= 'Z')
@@ -105,18 +105,18 @@ void intro(){
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
 
     SPR_init();
-
+ 
     initScrollSprites();
     
     PAL_setPalette(PAL0, title01.palette->data, DMA);
     PAL_setPalette(PAL1, black.palette->data, DMA);
-
+ 
     VDP_drawImageEx(BG_A, &title01, TILE_ATTR_FULL(PAL0, FALSE, FALSE, FALSE, ind), 0, 0, FALSE, TRUE);
     //ind += title01.tileset->numTile;
 	
     XGM_setLoopNumber(-1);
-	XGM_startPlay(&track01);
-
+    XGM_startPlay(&track01);
+ 
     waitTick(3000);
 
     VDP_drawImageEx(BG_A, &black, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, 0, TRUE, TRUE);
