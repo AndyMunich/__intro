@@ -2,7 +2,7 @@
 #include <resources.h>
 #include <sinuses.h>
 #include <scrolltext.h>
-
+ 
 u16 ind = TILE_USER_INDEX;
 int logoX = 80;
 int logoY = 0;
@@ -10,8 +10,8 @@ int j = 0;
 int k = 0;
 int l = 0;
  
-float hscroll_offset = 0;
-float hscroll_offset_fore = 0;
+int hscroll_offset = 0;
+int hscroll_offset_fore = 0;
 
 #define SCROLL_SPRITE_WIDTH 16
 #define SCROLL_SPRITE_SPACING 4
@@ -99,7 +99,7 @@ void logoMove()
     logoY = logoYSine[k];
     SPR_setPosition(logo, 50+logoX, 5+logoY);
 }
- 
+  
 void intro(){
 
     VDP_setScrollingMode(HSCROLL_PLANE, VSCROLL_PLANE);
@@ -116,8 +116,8 @@ void intro(){
 	
     XGM_setLoopNumber(-1);
     XGM_startPlay(&track01);
- 
-    waitTick(3000);
+
+    waitTick(500);
 
     VDP_drawImageEx(BG_A, &black, TILE_ATTR_FULL(PAL1, FALSE, FALSE, FALSE, ind), 0, 0, TRUE, TRUE);
     ind += black.tileset->numTile;
@@ -154,8 +154,8 @@ void mainpart(){
     {
         VDP_setHorizontalScroll(BG_B, hscroll_offset);
         VDP_setHorizontalScroll(BG_A, hscroll_offset_fore);
-        hscroll_offset -= 0.5;
-        hscroll_offset_fore -=1;
+        hscroll_offset -= 1;
+        hscroll_offset_fore -=2;
 
         setScrollSprites();
         logoMove();
